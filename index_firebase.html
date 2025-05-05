@@ -27,6 +27,8 @@
     const db = getDatabase(app);
     const pagosRef = ref(db, "pagos");
 
+    const mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"];
+
     function hablar(texto) {
       const voz = new SpeechSynthesisUtterance(texto);
       voz.lang = "es-ES";
@@ -39,10 +41,24 @@
       reconocimiento.onresult = (event) => {
         const frase = event.results[0][0].transcript;
         const fecha = new Date().toLocaleDateString("es-ES");
-        push(pagosRef, { fecha: fecha, nota: frase });
-        const mensaje = `Pago registrado el ${fecha}`;
-        document.getElementById("log").innerText = mensaje;
-        hablar(mensaje);
+
+        onValue(pagosRef, (snapshot) => {
+          const datos = snapshot.val() || {};
+          const asignados = Object.values(datos).map(p => p.mes);
+          const siguienteMes = mesesPendientes.find(m => !asignados.includes(m));
+
+          if (!siguienteMes) {
+            const mensaje = "Ya se han registrado todos los pagos.";
+            document.getElementById("log").innerText = mensaje;
+            hablar(mensaje);
+            return;
+          }
+
+          push(pagosRef, { fecha: fecha, nota: frase, mes: siguienteMes });
+          const mensaje = `Pago registrado el ${fecha}. Se asignó al mes de ${siguienteMes}.`;
+          document.getElementById("log").innerText = mensaje;
+          hablar(mensaje);
+        }, { onlyOnce: true });
       };
       reconocimiento.start();
     };
@@ -56,7 +72,7 @@
         }
         const valores = Object.values(datos);
         const ultimo = valores[valores.length - 1];
-        const mensaje = `Se han registrado ${valores.length} pagos. El último fue el ${ultimo.fecha}.`;
+        const mensaje = `Se han registrado ${valores.length} pagos. El último fue el ${ultimo.fecha} y se asignó al mes de ${ultimo.mes}.`;
         document.getElementById("log").innerText = mensaje;
         hablar(mensaje);
       }, { onlyOnce: true });
