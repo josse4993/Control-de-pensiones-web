@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Control de Pensiones</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; background: #f0f0f0; }
+    button, .config-icon { font-size: 18px; margin: 15px; padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; }
+    #log, #historial { margin-top: 20px; font-size: 18px; color: #333; }
+    table { width: 100%; max-width: 600px; margin: 20px auto; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCNvsDzT9QH8IDpLN2Obn2S6UxIzY-R9Ro",
+      authDomain: "control-de-pensiones-e59cc.firebaseapp.com",
+      databaseURL: "https://control-de-pensiones-e59cc-default-rtdb.firebaseio.com",
+      projectId: "control-de-pensiones-e59cc",
+      storageBucket: "control-de-pensiones-e59cc.appspot.com",
+      messagingSenderId: "1016730020594",
+      appId: "1:1016730020594:web:104ca6485404cf83d3fe6b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const pagosRef = ref(db, "pagos");
+    const configRef = ref(db, "config");
+
+    let mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"];
+
+    onValue(configRef, (snapshot) => {
+      const config = snapshot.val();
+      if (config && Array.isArray(config.meses)) {
+        mesesPendientes = config.meses;
+      }
+    });
+
+    function hablar(texto) {
+      const voz = new SpeechSynthesisUtterance(texto);
+      voz.lang = "es-ES";
+      speechSynthesis.speak(voz);
+    }
+
+    window.registrarPago = () => {
+      const reconocimiento = new webkitSpeechRecognition();
+      reconocimiento.lang = 'es-ES';
+      reconocimiento.onresult = (event) => {
+        const frase = event.results[0][0].transcript;
+        const fecha = new Date().toLocaleDateString("es-ES");
+
+        onValue(pagosRef, (snapshot) => {
+          const datos = snapshot.val() || {};
+          const asignados = Object.values(datos).map(p => p.mes);
+          const siguienteMes = mesesPendientes.find(m => !asignados.includes(m));
+
+          if (!siguienteMes) {
+            const mensaje = "Ya se han registrado todos los pagos. Actualmente no tienes nada pendiente.";
+            document.getElementById("log").innerText = mensaje;
+            hablar(mensaje);
+            return;
+          }
+
+          push(pagosRef, { fecha: fecha, nota: frase, mes: siguienteMes });
+          const mensaje = `Pago registrado el ${fecha}. Se asignó al mes de ${siguienteMes}.`;
+          document.getElementById("log").innerText = mensaje;
+          hablar(mensaje);
+          mostrarHistorial();
+        }, { onlyOnce: true });
+      };
+      reconocimiento.start();
+    };
+
+    window.verEstado = () => {
+      onValue(pagosRef, (snapshot) => {
+        const datos = snapshot.val();
+        if (!datos) {
+          hablar("No hay pagos registrados todavía.");
+          return;
+        }
+        const valores = Object.values(datos);
+        const ultimo = valores[valores.length - 1];
+        const mensaje = `Se han registrado ${valores.length} pagos. El último fue el ${ultimo.fecha} y se asignó al mes de ${ultimo.mes}.`;
+        document.getElementById("log").innerText = mensaje;
+        hablar(mensaje);
+      }, { onlyOnce: true });
+    };
+
+    window.mostrarHistorial = () => {
+      onValue(pagosRef, (snapshot) => {
+        const datos = snapshot.val();
+        const contenedor = document.getElementById("historial");
+        contenedor.innerHTML = "";
+
+        if (!datos) return;
+
+        const tabla = document.createElement("table");
+        tabla.innerHTML = "<tr><th>Fecha</th><th>Mes</th><th>Nota</th></tr>";
+
+        Object.values(datos).forEach(pago => {
+          const fila = document.createElement("tr");
+          fila.innerHTML = `<td>${pago.fecha}</td><td>${pago.mes}</td><td>${pago.nota}</td>`;
+          tabla.appendChild(fila);
+        });
+
+        contenedor.appendChild(tabla);
+      }, { onlyOnce: true });
+    };
+
+    window.exportarExcel = () => {
+      onValue(pagosRef, (snapshot) => {
+        const datos = snapshot.val();
+        if (!datos) return;
+        const lista = Object.values(datos);
+        const ws = XLSX.utils.json_to_sheet(lista);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Pagos");
+        XLSX.writeFile(wb, "historial_pagos.xlsx");
+      }, { onlyOnce: true });
+    };
+
+    window.abrirConfiguracion = () => {
+      const input = prompt("¿Cuántos meses deseas que estén pendientes?");
+      if (!input || isNaN(input)) return;
+      const total = parseInt(input);
+      const nuevos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      set(configRef, { meses: nuevos.slice(0, total) });
+      alert("Configuración actualizada. Recarga la página para aplicar cambios.");
+    };
+
+    window.onload = mostrarHistorial;
+  </script>
+</head>
+<body>
+  <h1>Control de Pensiones</h1>
+  <button onclick="registrarPago()">Registrar Pago</button>
+  <button onclick="verEstado()">Ver Estado</button>
+  <button onclick="abrirConfiguracion()">Configurar meses pendientes</button>
+  <button onclick="exportarExcel()">Exportar a Excel</button>
+  <div id="log"></div>
+  <div id="historial"></div>
+</body>
+</html>
