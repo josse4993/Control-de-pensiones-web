@@ -1,0 +1,30 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.png" />
+  <title>Mis Pensiones</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1em; background: #f4f4f4; }
+    h1 { color: #2c3e50; }
+    .boton { padding: 1em; margin: 1em 0; display: block; background: #3498db; color: white; border: none; border-radius: 10px; font-size: 1.2em; }
+    .boton:hover { background: #2980b9; }
+    .pulsando { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Mis Pensiones</h1>
+  <button id="botonRegistrar" class="boton">Registrar Pago</button>
+  <button id="botonEstado" class="boton">Ver Estado</button>
+  <button id="botonExcel" class="boton">Exportar Excel</button>
+  <button id="configuracion" class="boton">Ajustar Meses Pendientes</button>
+</body>
+</html>
