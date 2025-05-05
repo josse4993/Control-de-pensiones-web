@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,11 +8,9 @@
     body { font-family: Arial; text-align: center; padding: 40px; background: #f0f0f0; }
     button, .config-icon { font-size: 18px; margin: 15px; padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; }
     #log, #historial { margin-top: 20px; font-size: 18px; color: #333; }
-    .config-icon { position: absolute; top: 10px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; }
     table { width: 100%; max-width: 600px; margin: 20px auto; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
   </style>
-  <!-- Librería para exportar a Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
@@ -32,7 +31,7 @@
     const pagosRef = ref(db, "pagos");
     const configRef = ref(db, "config");
 
-    let mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"]; // predeterminados
+    let mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"];
 
     onValue(configRef, (snapshot) => {
       const config = snapshot.val();
@@ -137,10 +136,10 @@
   </script>
 </head>
 <body>
-  <button class="config-icon" onclick="abrirConfiguracion()">⚙️</button>
   <h1>Control de Pensiones</h1>
   <button onclick="registrarPago()">Registrar Pago</button>
   <button onclick="verEstado()">Ver Estado</button>
+  <button onclick="abrirConfiguracion()">Configurar meses pendientes</button>
   <button onclick="exportarExcel()">Exportar a Excel</button>
   <div id="log"></div>
   <div id="historial"></div>
