@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control de Pensiones</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; background: #f0f0f0; }
+    button { font-size: 24px; margin: 20px; padding: 20px 40px; border: none; border-radius: 10px; cursor: pointer; }
+    #log { margin-top: 40px; font-size: 18px; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>Control de Pensiones</h1>
+  <button onclick="registrarPago()">Registrar Pago</button>
+  <button onclick="verEstado()">Ver Estado</button>
+  <div id="log"></div>
+
+  <script>
+    let pagos = JSON.parse(localStorage.getItem("pagos") || "[]");
+
+    function hablar(texto) {
+      const tts = new SpeechSynthesisUtterance(texto);
+      tts.lang = 'es-ES';
+      speechSynthesis.speak(tts);
+    }
+
+    function registrarPago() {
+      const reconocimiento = new webkitSpeechRecognition();
+      reconocimiento.lang = 'es-ES';
+      reconocimiento.onresult = function(event) {
+        const frase = event.results[0][0].transcript;
+        const hoy = new Date().toLocaleDateString("es-ES");
+        pagos.push({ fecha: hoy });
+        localStorage.setItem("pagos", JSON.stringify(pagos));
+        const respuesta = `Pago registrado el ${hoy}`;
+        document.getElementById("log").innerText = respuesta;
+        hablar(respuesta);
+      };
+      reconocimiento.start();
+    }
+
+    function verEstado() {
+      if (pagos.length === 0) {
+        hablar("No hay pagos registrados todavía.");
+        return;
+      }
+      const ultimo = pagos[pagos.length - 1].fecha;
+      const texto = `Se han registrado ${pagos.length} pagos. El último fue el ${ultimo}.`;
+      document.getElementById("log").innerText = texto;
+      hablar(texto);
+    }
+  </script>
+</body>
+</html>
