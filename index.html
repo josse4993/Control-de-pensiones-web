@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,12 +5,17 @@
   <title>Control de Pensiones</title>
   <style>
     body { font-family: Arial; text-align: center; padding: 40px; background: #f0f0f0; }
-    button { font-size: 24px; margin: 20px; padding: 20px 40px; border: none; border-radius: 10px; cursor: pointer; }
-    #log { margin-top: 40px; font-size: 18px; color: #333; }
+    button, .config-icon { font-size: 18px; margin: 15px; padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; }
+    #log, #historial { margin-top: 20px; font-size: 18px; color: #333; }
+    .config-icon { position: absolute; top: 10px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; }
+    table { width: 100%; max-width: 600px; margin: 20px auto; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
   </style>
+  <!-- Librería para exportar a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCNvsDzT9QH8IDpLN2Obn2S6UxIzY-R9Ro",
@@ -26,8 +30,16 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const pagosRef = ref(db, "pagos");
+    const configRef = ref(db, "config");
 
-    const mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"];
+    let mesesPendientes = ["Enero", "Febrero", "Marzo", "Abril"]; // predeterminados
+
+    onValue(configRef, (snapshot) => {
+      const config = snapshot.val();
+      if (config && Array.isArray(config.meses)) {
+        mesesPendientes = config.meses;
+      }
+    });
 
     function hablar(texto) {
       const voz = new SpeechSynthesisUtterance(texto);
@@ -48,7 +60,7 @@
           const siguienteMes = mesesPendientes.find(m => !asignados.includes(m));
 
           if (!siguienteMes) {
-            const mensaje = "Ya se han registrado todos los pagos.";
+            const mensaje = "Ya se han registrado todos los pagos. Actualmente no tienes nada pendiente.";
             document.getElementById("log").innerText = mensaje;
             hablar(mensaje);
             return;
@@ -58,6 +70,7 @@
           const mensaje = `Pago registrado el ${fecha}. Se asignó al mes de ${siguienteMes}.`;
           document.getElementById("log").innerText = mensaje;
           hablar(mensaje);
+          mostrarHistorial();
         }, { onlyOnce: true });
       };
       reconocimiento.start();
@@ -77,12 +90,59 @@
         hablar(mensaje);
       }, { onlyOnce: true });
     };
+
+    window.mostrarHistorial = () => {
+      onValue(pagosRef, (snapshot) => {
+        const datos = snapshot.val();
+        const contenedor = document.getElementById("historial");
+        contenedor.innerHTML = "";
+
+        if (!datos) return;
+
+        const tabla = document.createElement("table");
+        tabla.innerHTML = "<tr><th>Fecha</th><th>Mes</th><th>Nota</th></tr>";
+
+        Object.values(datos).forEach(pago => {
+          const fila = document.createElement("tr");
+          fila.innerHTML = `<td>${pago.fecha}</td><td>${pago.mes}</td><td>${pago.nota}</td>`;
+          tabla.appendChild(fila);
+        });
+
+        contenedor.appendChild(tabla);
+      }, { onlyOnce: true });
+    };
+
+    window.exportarExcel = () => {
+      onValue(pagosRef, (snapshot) => {
+        const datos = snapshot.val();
+        if (!datos) return;
+        const lista = Object.values(datos);
+        const ws = XLSX.utils.json_to_sheet(lista);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Pagos");
+        XLSX.writeFile(wb, "historial_pagos.xlsx");
+      }, { onlyOnce: true });
+    };
+
+    window.abrirConfiguracion = () => {
+      const input = prompt("¿Cuántos meses deseas que estén pendientes?");
+      if (!input || isNaN(input)) return;
+      const total = parseInt(input);
+      const nuevos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      set(configRef, { meses: nuevos.slice(0, total) });
+      alert("Configuración actualizada. Recarga la página para aplicar cambios.");
+    };
+
+    window.onload = mostrarHistorial;
   </script>
 </head>
 <body>
+  <button class="config-icon" onclick="abrirConfiguracion()">⚙️</button>
   <h1>Control de Pensiones</h1>
   <button onclick="registrarPago()">Registrar Pago</button>
   <button onclick="verEstado()">Ver Estado</button>
+  <button onclick="exportarExcel()">Exportar a Excel</button>
   <div id="log"></div>
+  <div id="historial"></div>
 </body>
 </html>
